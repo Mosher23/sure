@@ -77,12 +77,10 @@ class AddScalableCapitalAccountSelectionMigrationTest < ActiveSupport::TestCase
 
     roll_back_account_selection
 
-    legacy = item.reload
-    assert_equal "broker-one", legacy.portfolio_id
-    assert_equal "personal-savings", legacy.savings_id
-    assert_equal broker_checkpoint, legacy.broker_synced_through
-    assert_equal savings_checkpoint, legacy.savings_synced_through
-    assert_equal "person", legacy.broker_account_id
+    # A whole-row reload would cache a prepared statement with the old schema's column layout.
+    legacy = ScalableCapitalItem.where(id: item.id)
+      .pick(:portfolio_id, :savings_id, :broker_synced_through, :savings_synced_through, :broker_account_id)
+    assert_equal [ "broker-one", "personal-savings", broker_checkpoint, savings_checkpoint, "person" ], legacy
     assert_equal account_links, AccountProvider.where(provider_type: "ScalableCapitalAccount", provider_id: account_links.keys)
       .pluck(:provider_id, :account_id).to_h
     assert connection.index_exists?(:scalable_capital_accounts, [ :scalable_capital_item_id, :kind ], unique: true)
